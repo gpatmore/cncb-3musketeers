@@ -7,3 +7,12 @@ services:
             - 8000:80
         volumes:
             - ./src:/usr/share/nginx/html
+
+    curl:
+        image: curlimages/curl
+        volumes:
+            - ./scripts:/app
+        entrypoint: sh
+        environment:
+            WEB_SERVER_ADDRESS: webserver
+        working_dir: /app

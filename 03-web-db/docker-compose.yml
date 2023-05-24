@@ -8,29 +8,56 @@ services:
             - ./src:/usr/share/nginx/html
 
     database:
-        image: percona
+        image: mariadb
         ports:
             - 3306:3306
         volumes:
-            - ./data:/var/lib/mysql:rw
+            - dbdata:/var/lib/mysql
         env_file:
             - ./db.env
+        healthcheck:
+            test: mysqladmin ping -h 127.0.0.1 -u $$MYSQL_ROOT_USER --password=$$MYSQL_ROOT_PASSWORD
+            start_period: 5s
+            interval: 5s
+            timeout: 5s
+            retries: 55
 
     data_load:
-        image: percona
+        image: mariadb
         volumes:
             - ./seed_database:/seed_database
-        links:
-            - database:db
         env_file:
             - ./db.env
         command: /seed_database/load-schema.sh
+        depends_on:
+            database:
+                condition: service_healthy
 
     client:
-        image: percona
-        links:
-            - database:db
-            - webserver:web
+        image: mariadb
         env_file:
             - ./db.env
-        command: /usr/bin/mysql -h db
+        volumes:
+            - ./:/app
+        working_dir: /app
+        entrypoint: bash
+
+    curl:
+        image: curlimages/curl
+        volumes:
+            - ./test-scripts:/app
+        entrypoint: sh
+        environment:
+            WEB_SERVER_ADDRESS: webserver
+        working_dir: /app
+
+    make:
+        image: flemay/musketeers
+        volumes:
+            - ./:/app
+        working_dir: /app
+        entrypoint: make
+
+volumes:
+    dbdata:
+        external: true
